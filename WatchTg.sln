@@ -3,7 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32602.215
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WatchDb.DataAccess", "WatchDb.DataAccess\WatchDb.DataAccess.csproj", "{E1C3BE43-09F7-4371-AFAD-EED2783D3A3C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WatchDb.DataAccess", "WatchDb.DataAccess\WatchDb.DataAccess.csproj", "{E1C3BE43-09F7-4371-AFAD-EED2783D3A3C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WatchUILibrary", "WatchUILibrary\WatchUILibrary.csproj", "{0E2F8F32-7822-4823-B42C-AC1EA87D6CC3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WatchDb.API", "WatchDb.API\WatchDb.API.csproj", "{462802A5-4F90-4AC9-9971-E50840635CBC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WatchDb.TelegramAPI", "WatchDb.TelegramAPI\WatchDb.TelegramAPI.csproj", "{81E2E509-3A2C-4EF2-9BB9-D73F382456B2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +21,18 @@ Global
 		{E1C3BE43-09F7-4371-AFAD-EED2783D3A3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1C3BE43-09F7-4371-AFAD-EED2783D3A3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1C3BE43-09F7-4371-AFAD-EED2783D3A3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E2F8F32-7822-4823-B42C-AC1EA87D6CC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E2F8F32-7822-4823-B42C-AC1EA87D6CC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E2F8F32-7822-4823-B42C-AC1EA87D6CC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E2F8F32-7822-4823-B42C-AC1EA87D6CC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{462802A5-4F90-4AC9-9971-E50840635CBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{462802A5-4F90-4AC9-9971-E50840635CBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{462802A5-4F90-4AC9-9971-E50840635CBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{462802A5-4F90-4AC9-9971-E50840635CBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81E2E509-3A2C-4EF2-9BB9-D73F382456B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81E2E509-3A2C-4EF2-9BB9-D73F382456B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81E2E509-3A2C-4EF2-9BB9-D73F382456B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81E2E509-3A2C-4EF2-9BB9-D73F382456B2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -6,7 +6,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using WatchUILibrary;
 using WatchUILibrary.Models;
-using System.Reflection.Metadata;
 using System.Text;
 
 namespace WatchDb.TelegramAPI.Controllers
@@ -24,6 +23,7 @@ namespace WatchDb.TelegramAPI.Controllers
 
         private static Producer? producer;
         private static Category? category;
+        private static Watch? newWatch;
         private static ChatId chat;
 
 
@@ -32,24 +32,26 @@ namespace WatchDb.TelegramAPI.Controllers
             this.admin = new TelegramBotClient(configuration["TgTokens:Admin"]);
 
             this.context = context;
-            replyCodesHandles.Add(ReplyCodes.GetCategories, SendCategoriesKeyboard);
-            replyCodesHandles.Add(ReplyCodes.GetProducers, SendProducersKeyboard);
-            replyCodesHandles.Add(ReplyCodes.CreateNewCategory, SendCreateNewCategoryMessage);
-            replyCodesHandles.Add(ReplyCodes.CreateNewProducer, SendCreateNewProducerMessage);
-            replyCodesHandles.Add(ReplyCodes.SetTitle, SendCreateNewTitleMessage);
-            replyCodesHandles.Add(ReplyCodes.SetPrice, SendCreateNewPriceMessage);
-            replyCodesHandles.Add(ReplyCodes.CreateNewWatch, CreateWatch);
-            commandHandles.Add("/category", CreateCategory);
-            commandHandles.Add("/all", SendWatches);
-            commandHandles.Add("/producer", CreateProducer);
-            commandHandles.Add("/model", CreateTitle);
-            commandHandles.Add("/price", CreatePrice);
-            commandHandles.Add("/orders", SendOrders);
-            commandHandles.Add("/users", SendUsers);
-            commandHandles.Add("/new", CreateNewWatch);
-            commandHandles.Add("/message", SendMessage);
-            commandHandles.Add("/writeall", SendMessageToAll);
+            replyCodesHandles.Add(ReplyCodes.GetCategories, SendCategoriesKeyboardAsync);
+            replyCodesHandles.Add(ReplyCodes.GetProducers, SendProducersKeyboardAsync);
+            replyCodesHandles.Add(ReplyCodes.CreateNewCategory, SendCreateNewCategoryMessageAsync);
+            replyCodesHandles.Add(ReplyCodes.CreateNewProducer, SendCreateNewProducerMessageAsync);
+            replyCodesHandles.Add(ReplyCodes.SetTitle, SendCreateNewTitleMessageAsync);
+            replyCodesHandles.Add(ReplyCodes.SetPrice, SendCreateNewPriceMessageAsync);
+            replyCodesHandles.Add(ReplyCodes.CreateNewWatch, CreateWatchAsync);
+            commandHandles.Add("/category", CreateCategoryAsync);
+            commandHandles.Add("/all", SendWatchesAsync);
+            commandHandles.Add("/producer", CreateProducerAsync);
+            commandHandles.Add("/model", CreateTitleAsync);
+            commandHandles.Add("/price", CreatePriceAsync);
+            commandHandles.Add("/orders", SendOrdersAsync);
+            commandHandles.Add("/users", SendUsersAsync);
+            commandHandles.Add("/new", CreateNewWatchAsync);
+            commandHandles.Add("/message", SendMessageToUserAsync);
+            commandHandles.Add("/writeall", SendMessageToAllUsersAsync);
         }
+
+
         [HttpPost]
         public async Task<IResult> Post(Update update)
         {
@@ -57,191 +59,87 @@ namespace WatchDb.TelegramAPI.Controllers
             {
                 if (update.Type == Telegram.Bot.Types.Enums.UpdateType.Message && update.Message != null && update.Message.Text != null)
                 {
-                    var idx = update.Message.Text.IndexOf(' ');
-                    string command;
-
-                    if (idx > 0)
-                    {
-                        command = update.Message.Text.Substring(0, idx).ToLower();
-                    }
-                    else
-                    {
-                        command = update.Message.Text.ToLower();
-                    }
-
-                    if (commandHandles.ContainsKey(command))
-                    {
-                        await commandHandles[command](update);
-                        return Results.Ok();
-                    }
-
-                    else
-                    {
-                        await SendAddNewKeyboard(update);
-                    }
+                    await HandleCommandAsync(update);
                 }
-                else if (update.Type == Telegram.Bot.Types.Enums.UpdateType.CallbackQuery)
+                else if (update.Type == Telegram.Bot.Types.Enums.UpdateType.CallbackQuery && update.CallbackQuery != null && update.CallbackQuery.Data != null && update.CallbackQuery.From != null)
                 {
-                    if (update.CallbackQuery != null && update.CallbackQuery.Data != null)
-                    {
-                        if (Enum.TryParse<ReplyCodes>(update.CallbackQuery.Data, out ReplyCodes code))
-                        {
-                            if (replyCodesHandles.ContainsKey(code))
-                            {
-                                await replyCodesHandles[code](update);
-                            }
-                        }
-                        else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CategoryId)!))
-                        {
-                            if (int.TryParse(update.CallbackQuery.Data
-                                .ToLower()
-                                .Substring(Enum.GetName<ReplyCodes>(ReplyCodes.CategoryId)!.Length).Trim(), out int id))
-                            {
-                                category = await context.Categories.GetAsync(id);
-                            }
-                            await SendAddNewKeyboard(update);
-                        }
-                        else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.ProducerId)!))
-                        {
-                            if (int.TryParse(update.CallbackQuery.Data
-                                .ToLower()
-                                .Substring(Enum.GetName<ReplyCodes>(ReplyCodes.ProducerId)!.Length).Trim(), out int id))
-                            {
-                                producer = await context.Producers.GetAsync(id);
-                            }
-                            await SendAddNewKeyboard(update);
-                        }
-                        else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.DeleteWatch)!))
-                        {
-                            if (int.TryParse(update.CallbackQuery.Data
-                                .ToLower()
-                                .Substring(Enum.GetName<ReplyCodes>(ReplyCodes.DeleteWatch)!.Length).Trim(), out int id))
-                            {
-                                await context.Watches.DeleteAsync(id);
-                            }
-                            
-                        }
-                        else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CloseOrder)!))
-                        {
-                            if (int.TryParse(update.CallbackQuery.Data
-                                .ToLower()
-                                .Substring(Enum.GetName<ReplyCodes>(ReplyCodes.CloseOrder)!.Length).Trim(), out int id))
-                            {
-                                await context.Orders.CloseOrderAsync(id);
-                            }
-
-                        }
-
-                        else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)!))
-                        {
-                            if (long.TryParse(update.CallbackQuery.Data
-                                .ToLower()
-                                .Substring(Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)!.Length).Trim(), out long id))
-                            {
-                                chat = id;
-                                await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Write /message [message]");
-                            }
-
-                        }
-
-                    }
+                    await HandleCallbackQueryAsync(update);
                 }
-
             }
             return Results.Ok();
         }
 
-
-
-        private async Task SendWatches(Update update)
+        private async Task HandleCommandAsync(Update update)
         {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.From != null)
-                {
-                    var watches = await context.Watches.GetAsync();
+            string command = TgHelper.GetCommand(update.Message!.Text!);
 
-                    await admin.SendWatchesAsync(update.Message.From.Id, watches, true);
+            if (commandHandles.ContainsKey(command))
+            {
+                await commandHandles[command](update);
+            }
+
+            else
+            {
+                await SendAddNewWatchKeyboardAsync(update);
+            }
+        }
+
+        private async Task HandleCallbackQueryAsync(Update update)
+        {
+            if (Enum.TryParse<ReplyCodes>(update.CallbackQuery!.Data, out ReplyCodes code))
+            {
+                if (replyCodesHandles.ContainsKey(code))
+                {
+                    await replyCodesHandles[code](update);
+                }
+            }
+            else if (update.CallbackQuery.Data!.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CategoryId)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.CategoryId, out int id))
+                {
+                    category = await context.Categories.GetAsync(id);
+                }
+                await SendAddNewWatchKeyboardAsync(update);
+            }
+            else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.ProducerId)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.ProducerId, out int id))
+                {
+                    producer = await context.Producers.GetAsync(id);
+                }
+                await SendAddNewWatchKeyboardAsync(update);
+            }
+            else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.DeleteWatch)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.DeleteWatch, out int id))
+                {
+                    await context.Watches.DeleteAsync(id);
+                }
+            }
+            else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CloseOrder)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.CloseOrder, out int id))
+                {
+                    await context.Orders.CloseOrderAsync(id);
+                }
+            }
+
+            else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)!))
+            {
+                if (long.TryParse(update.CallbackQuery.Data
+                    .Substring(Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)!.Length).Trim(), out long id))
+                {
+                    chat = id;
+                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Write /message [message]");
                 }
             }
         }
 
-        private async Task SendUsers(Update update)
+        // Keyboards
+
+        private async Task SendAddNewWatchKeyboardAsync(Update? update)
         {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.From != null)
-                {
-                    var users = await context.Users.GetAsync();
-
-                    if (users.Count() > 0)
-                    {
-
-                        foreach (var user in users)
-                        {
-                            InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Write", $"{Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)} {user.Id}"));
-
-                            string url = "https://bpgroup.lv/i/product_images/images/Z2000128425.jpg";
-                            await admin.SendPhotoAsync(update.Message.From.Id, new Telegram.Bot.Types.InputFiles.InputOnlineFile(url));
-                            await admin.SendTextMessageAsync(update.Message.From.Id, $"{user.ChatId}", replyMarkup: keyboard);
-                        }
-                    }
-
-                    else
-                    {
-                        await admin.SendTextMessageAsync(update.Message.From.Id, "Not found");
-                    }
-                }
-            }
-        }
-
-        private async Task SendOrders(Update update)
-        {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.From != null)
-                {
-                    var orders = await context.Orders.GetAsync();
-
-                    if (orders.Count() > 0)
-                    {
-
-                        foreach (var order in orders)
-                        {
-                            InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Close", $"{Enum.GetName<ReplyCodes>(ReplyCodes.CloseOrder)} {order.Id}"));
-
-                            StringBuilder sb = new StringBuilder();
-                            sb.Append( $"{order.Date}. OrderId: {order.Id}. UserId: {order.UserId}.");
-
-                            foreach(var detail in order.Details)
-                            {
-                                sb.Append($"{detail.WatchId} ({detail.UnitPrice})");
-                            }
-
-                            await admin.SendTextMessageAsync(update.Message.From.Id, sb.ToString(), replyMarkup: keyboard);
-                        }
-                    }
-
-                    else
-                    {
-                        await admin.SendTextMessageAsync(update.Message.From.Id, "Not found");
-                    }
-                }
-            }
-        }
-
-        private static Watch? newWatch;
-
-        private async Task CreateNewWatch(Update update)
-        {
-            newWatch = new Watch();
-
-            await SendAddNewKeyboard(update);
-        }
-
-        private async Task SendAddNewKeyboard(Update? update)
-        {
-            if(update == null)
+            if (update == null)
             {
                 return;
             }
@@ -263,104 +161,73 @@ namespace WatchDb.TelegramAPI.Controllers
                     return;
                 }
 
-                var row1 = new List<InlineKeyboardButton>()
-                    {
-                        InlineKeyboardButton.WithCallbackData($"Producer{(producer != null ? $" ({producer.ProducerName})" : "")}", Enum.GetName<ReplyCodes>(ReplyCodes.GetProducers)!),
-                        InlineKeyboardButton.WithCallbackData($"Model{(newWatch.Title != null ? $" ({newWatch.Title})" : "")}", Enum.GetName<ReplyCodes>(ReplyCodes.SetTitle)!)
-                    };
-                var row2 = new List<InlineKeyboardButton>()
-                    {
-                        InlineKeyboardButton.WithCallbackData($"Price ({newWatch.Price})", Enum.GetName<ReplyCodes>(ReplyCodes.SetPrice)!),
-                        InlineKeyboardButton.WithCallbackData($"Category{(category != null ? $" ({category.CategoryName})" : "")}", Enum.GetName<ReplyCodes>(ReplyCodes.GetCategories)!)
-                    };
-                var row3 = new List<InlineKeyboardButton>()
-                    {
-                        InlineKeyboardButton.WithCallbackData($"Create", Enum.GetName<ReplyCodes>(ReplyCodes.CreateNewWatch)!),
-                    };
-                InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new List<List<InlineKeyboardButton>>() { row1, row2, row3 });
-
-                await admin.SendTextMessageAsync(chatId, "Select", replyMarkup: keyboard);
+                await admin.SendAddNewWatchKeyboardAsync(chatId, category, producer, newWatch);
             }
+        }
 
+        private async Task SendCategoriesKeyboardAsync(Update update)
+        {
+            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
+            {
+                await admin.SendCategoriesKeyboardAsync(update.CallbackQuery.From.Id, await context.Categories.GetAsync(), true);
+            }
+        }
+
+        private async Task SendProducersKeyboardAsync(Update update)
+        {
+            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
+            {
+                await admin.SendProducersKeyboardAsync(update.CallbackQuery.From.Id, await context.Producers.GetAsync(), true);
+            }
         }
 
 
-        private async Task CreateWatch(Update update)
+        // ===========================================
+
+
+        // Creating
+        private async Task CreateNewWatchAsync(Update update)
         {
+            newWatch = new Watch();
+
+            await SendAddNewWatchKeyboardAsync(update);
+        }
+
+        private async Task CreateProducerAsync(Update update)
+        {
+            var name = TgHelper.GetValueFromCommand(update, "/producer");
+            await context.Producers.CreateAsync(new Producer()
+            {
+                ProducerName = name
+            });
+
+            await SendAddNewWatchKeyboardAsync(update);
+        }
+
+        private async Task CreateCategoryAsync(Update update)
+        {
+            var name = TgHelper.GetValueFromCommand(update, "/category");
+            await context.Categories.CreateAsync(new Category()
+            {
+                CategoryName = name
+            });
+
+            await SendAddNewWatchKeyboardAsync(update);
+        }
+
+        private async Task CreateTitleAsync(Update update)
+        {
+            var name = TgHelper.GetValueFromCommand(update, "/model");
             if (newWatch != null)
             {
-                newWatch.Producer = producer;
-                newWatch.Category = category;
-                await context.Watches.CreateAsync(newWatch);
-            }
-        }
-
-        private async Task SendCreateNewTitleMessage(Update update)
-        {
-            if (update != null)
-            {
-                if (update.CallbackQuery != null && update.CallbackQuery.From != null)
-                {
-                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Write /model [value]");
-                }
-            }
-        }
-
-        private async Task SendMessage(Update update)
-        {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.Text != null)
-                {
-                    await admin.SendTextMessageAsync(chat, update.Message.Text);
-                }
-            }
-        }
-
-        private async Task SendMessageToAll(Update update)
-        {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.Text != null)
-                {
-                    var msg = update.Message.Text.Substring("/writeall".Length).Trim();
-                    if (string.IsNullOrWhiteSpace(msg))
-                    {
-                        return;
-                    }
-                    (await context.Users.GetAsync()).ForEach(async u => await admin.SendTextMessageAsync(u.ChatId, update.Message.Text));
-                }
-            }
-        }
-
-        private async Task CreateTitle(Update update)
-        {
-            if (update != null && update.Message != null && update.Message.Text != null)
-            {
-                var name = update.Message.Text.Substring("/model".Length).Trim();
-                if (newWatch != null)
-                {
-                    newWatch.Title = name;
-                }
+                newWatch.Title = name;
             }
 
-            await SendAddNewKeyboard(update);
+            await SendAddNewWatchKeyboardAsync(update);
         }
 
-        private async Task SendCreateNewPriceMessage(Update update)
+        private async Task CreatePriceAsync(Update update)
         {
-            if (update != null)
-            {
-                if (update.CallbackQuery != null && update.CallbackQuery.From != null)
-                {
-                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Write /price [value]");
-                }
-            }
-        }
-
-        private async Task CreatePrice(Update update)
-        {
-
             if (update != null && update.Message != null && update.Message.Text != null)
             {
                 if (decimal.TryParse(update.Message.Text.Substring("/price".Length).Trim(), out decimal price))
@@ -372,63 +239,109 @@ namespace WatchDb.TelegramAPI.Controllers
                 }
             }
 
-            await SendAddNewKeyboard(update);
+            await SendAddNewWatchKeyboardAsync(update);
         }
 
-        private async Task SendCategoriesKeyboard(Update update)
+        private async Task CreateWatchAsync(Update update)
         {
-            if (update != null)
+            if (newWatch != null)
             {
-                if (update.CallbackQuery != null && update.CallbackQuery.From != null)
-                {
-                    await admin.SendCategoriesKeyboardAsync(update.CallbackQuery.From.Id, await context.Categories.GetAsync(), true);
-                }
+                newWatch.Producer = producer;
+                newWatch.Category = category;
+                await context.Watches.CreateAsync(newWatch);
             }
         }
 
-        private async Task SendCreateNewCategoryMessage(Update update)
+        // ============================================
+
+
+
+        // Messages
+
+        private async Task SendMessageToUserAsync(Update update)
+        {
+            if (update != null && update.Message != null && update.Message.Text != null)
+            {
+                await admin.SendTextMessageAsync(chat, update.Message.Text);
+            }
+        }
+
+        private async Task SendMessageToAllUsersAsync(Update update)
+        {
+            if (update != null && update.Message != null && update.Message.Text != null)
+            {
+                var msg = TgHelper.GetValueFromCommand(update, "/writeall");
+                if (string.IsNullOrWhiteSpace(msg))
+                {
+                    return;
+                }
+
+                (await context.Users.GetAsync()).ForEach(async u => await admin.SendTextMessageAsync(u.ChatId, update.Message.Text));
+            }
+        }
+
+        private async Task SendCreateNewTitleMessageAsync(Update update)
+        {
+            await admin.SendCallbackQueryResponseAsync(update, "Write /model [value]");
+        }
+
+        private async Task SendCreateNewPriceMessageAsync(Update update)
+        {
+            await admin.SendCallbackQueryResponseAsync(update, "Write /price [value]");
+        }
+
+        private async Task SendCreateNewCategoryMessageAsync(Update update)
         {
             await admin.SendCallbackQueryResponseAsync(update, "Write /category [name]");
         }
 
-        private async Task CreateCategory(Update update)
-        {
-            if (update != null && update.Message != null && update.Message.Text != null)
-            {
-                var name = update.Message.Text.Substring("/category".Length).Trim();
-                await context.Categories.CreateAsync(new Category()
-                {
-                    CategoryName = name
-                });
-            }
-
-            await SendAddNewKeyboard(update);
-        }
-
-        private async Task SendProducersKeyboard(Update update)
-        {
-            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-            {
-                await admin.SendProducersKeyboardAsync(update.CallbackQuery.From.Id, await context.Producers.GetAsync(), true);
-            }
-        }
-
-        private async Task SendCreateNewProducerMessage(Update update)
+        private async Task SendCreateNewProducerMessageAsync(Update update)
         {
             await admin.SendCallbackQueryResponseAsync(update, "Write /producer [name]");
         }
 
-        private async Task CreateProducer(Update update)
+        // ============================================
+
+
+        // Data
+
+        private async Task SendWatchesAsync(Update update)
         {
-            if (update != null && update.Message != null && update.Message.Text != null)
+            if (update != null && update.Message != null && update.Message.From != null)
             {
-                var name = update.Message.Text.Substring("/producer".Length).Trim();
-                await context.Producers.CreateAsync(new Producer()
-                {
-                    ProducerName = name
-                });
+                var watches = await context.Watches.GetAsync();
+
+                await admin.SendWatchesAsync(update.Message.From.Id, watches, true);
             }
-            await SendAddNewKeyboard(update);
         }
+
+        private async Task SendUsersAsync(Update update)
+        {
+            if (update != null)
+            {
+                if (update.Message != null && update.Message.From != null)
+                {
+                    var users = await context.Users.GetAsync();
+
+                    await admin.SendUsersAsync(update.Message.From.Id, users);
+                }
+            }
+        }
+
+        private async Task SendOrdersAsync(Update update)
+        {
+            if (update != null)
+            {
+                if (update.Message != null && update.Message.From != null)
+                {
+                    var orders = await context.Orders.GetAsync();
+
+                    await admin.SendOrdersAsync(update.Message.From.Id, orders);
+                }
+            }
+        }
+
+
+        // ============================================
     }
 }

@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Text;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using WatchUILibrary.Models;
@@ -34,6 +35,75 @@ namespace WatchDb.TelegramAPI
             {
                 await client.SendTextMessageAsync(chat, "Not found");
             }
+        }
+
+        public static async Task SendUsersAsync(this TelegramBotClient client, ChatId chat, IEnumerable<WatchUILibrary.Models.User> users)
+        {
+            if (users.Count() > 0)
+            {
+
+                foreach (var user in users)
+                {
+                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Write", $"{Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)} {user.Id}"));
+
+                    string url = "https://bpgroup.lv/i/product_images/images/Z2000128425.jpg";
+                    await client.SendPhotoAsync(chat, new Telegram.Bot.Types.InputFiles.InputOnlineFile(url));
+                    await client.SendTextMessageAsync(chat, $"{user.ChatId}", replyMarkup: keyboard);
+                }
+            }
+
+            else
+            {
+                await client.SendTextMessageAsync(chat, "Not found");
+            }
+        }
+
+        public static async Task SendOrdersAsync(this TelegramBotClient client, ChatId chat, IEnumerable<Order> orders)
+        {
+            if (orders.Count() > 0)
+            {
+                foreach (var order in orders)
+                {
+                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Close", $"{Enum.GetName<ReplyCodes>(ReplyCodes.CloseOrder)} {order.Id}"));
+
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append($"{order.Date}. OrderId: {order.Id}. UserId: {order.UserId}.");
+
+                    foreach (var detail in order.Details)
+                    {
+                        sb.Append($"{detail.WatchId} ({detail.UnitPrice})");
+                    }
+
+                    await client.SendTextMessageAsync(chat, sb.ToString(), replyMarkup: keyboard);
+                }
+            }
+
+            else
+            {
+                await client.SendTextMessageAsync(chat, "Not found");
+            }
+
+        }
+
+        public static async Task SendAddNewWatchKeyboardAsync(this TelegramBotClient client, ChatId chat, Category? category, Producer? producer, Watch watch)
+        {
+            var row1 = new List<InlineKeyboardButton>()
+                {
+                    InlineKeyboardButton.WithCallbackData($"Producer{(producer != null ? $" ({producer.ProducerName})" : "")}", Enum.GetName<ReplyCodes>(ReplyCodes.GetProducers)!),
+                    InlineKeyboardButton.WithCallbackData($"Model{(watch.Title != null ? $" ({watch.Title})" : "")}", Enum.GetName<ReplyCodes>(ReplyCodes.SetTitle)!)
+                };
+            var row2 = new List<InlineKeyboardButton>()
+                {
+                    InlineKeyboardButton.WithCallbackData($"Price ({watch.Price})", Enum.GetName<ReplyCodes>(ReplyCodes.SetPrice)!),
+                    InlineKeyboardButton.WithCallbackData($"Category{(category != null ? $" ({category.CategoryName})" : "")}", Enum.GetName<ReplyCodes>(ReplyCodes.GetCategories)!)
+                };
+            var row3 = new List<InlineKeyboardButton>()
+                {
+                    InlineKeyboardButton.WithCallbackData($"Create", Enum.GetName<ReplyCodes>(ReplyCodes.CreateNewWatch)!),
+                };
+            InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new List<List<InlineKeyboardButton>>() { row1, row2, row3 });
+
+            await client.SendTextMessageAsync(chat, "Select", replyMarkup: keyboard);
         }
 
         public static async Task SendCategoriesKeyboardAsync(this TelegramBotClient client, ChatId chat, IEnumerable<Category> categories, bool isAdmin = false)
@@ -111,7 +181,5 @@ namespace WatchDb.TelegramAPI
                 await client.SendTextMessageAsync(update.Message.From.Id, msg);
             }
         }
-
-
     }
 }

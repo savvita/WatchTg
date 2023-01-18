@@ -1,13 +1,10 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using WatchUILibrary;
 using WatchUILibrary.Models;
-using System.Reflection.Metadata;
-using System.Text;
 
 namespace WatchDb.TelegramAPI.Controllers
 {
@@ -50,36 +47,7 @@ namespace WatchDb.TelegramAPI.Controllers
 
                 else if (update.Type == Telegram.Bot.Types.Enums.UpdateType.CallbackQuery && update.CallbackQuery != null && update.CallbackQuery.Data != null && update.CallbackQuery.From != null)
                 {
-                    await AddUserAsync(update.CallbackQuery.From.Id);
-
-                    if (Enum.TryParse<ReplyCodes>(update.CallbackQuery.Data, out ReplyCodes code))
-                    {
-                        if (replyCodesHandles.ContainsKey(code))
-                        {
-                            await replyCodesHandles[code](update);
-                        }
-                    }
-                    else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CategoryId)!))
-                    {
-                        if(TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.CategoryId, out int id))
-                        {
-                            await SendWatchesByCategoryAsync(update.CallbackQuery.From.Id, id);
-                        }
-                    }
-                    else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.ProducerId)!))
-                    {
-                        if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.ProducerId, out int id))
-                        {
-                            await SendWatchesByProducerAsync(update.CallbackQuery.From.Id, id);
-                        }
-                    }
-                    else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.Buy)!))
-                    {
-                        if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.Buy, out int id))
-                        {
-                            await BuyWatchAsync(update.CallbackQuery.From.Id, id);
-                        }
-                    }
+                    await HandleCallbackQueryAsync(update);
                 }
             }
             return Results.Ok();
@@ -94,6 +62,40 @@ namespace WatchDb.TelegramAPI.Controllers
             if (commandHandles.ContainsKey(command))
             {
                 await commandHandles[command](update);
+            }
+        }
+
+        private async Task HandleCallbackQueryAsync(Update update)
+        {
+            await AddUserAsync(update.CallbackQuery!.From!.Id);
+
+            if (Enum.TryParse<ReplyCodes>(update.CallbackQuery.Data, out ReplyCodes code))
+            {
+                if (replyCodesHandles.ContainsKey(code))
+                {
+                    await replyCodesHandles[code](update);
+                }
+            }
+            else if (update.CallbackQuery.Data!.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CategoryId)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.CategoryId, out int id))
+                {
+                    await SendWatchesByCategoryAsync(update.CallbackQuery.From.Id, id);
+                }
+            }
+            else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.ProducerId)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.ProducerId, out int id))
+                {
+                    await SendWatchesByProducerAsync(update.CallbackQuery.From.Id, id);
+                }
+            }
+            else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.Buy)!))
+            {
+                if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.Buy, out int id))
+                {
+                    await BuyWatchAsync(update.CallbackQuery.From.Id, id);
+                }
             }
         }
 

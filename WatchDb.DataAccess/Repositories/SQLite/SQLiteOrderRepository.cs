@@ -96,7 +96,7 @@ namespace WatchDb.DataAccess.Repositories.SQL
         public async Task<OrderModel?> UpdateAsync(OrderModel order)
         {
             using IDbConnection connection = new SqliteConnection(configuration.ConnectionString);
-            int rows = await connection.ExecuteAsync("update Users set Date = @Date, StatusId = @StatusId, UserId = @UserId where Id = @Id", order);
+            int rows = await connection.ExecuteAsync("update Orders set Date = @Date, StatusId = @StatusId, UserId = @UserId where Id = @Id", order);
 
             return rows != 0 ? order : null;
         }

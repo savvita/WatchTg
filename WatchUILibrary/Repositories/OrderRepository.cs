@@ -6,7 +6,7 @@ namespace WatchUILibrary.Repositories
 {
     public class OrderRepository
     {
-        private DbContext context;
+        private readonly DbContext context;
         public OrderRepository(DbContext context)
         {
             this.context = context;

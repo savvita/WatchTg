@@ -80,14 +80,14 @@ namespace WatchDb.TelegramAPI.Controllers
             {
                 if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.CategoryId, out int id))
                 {
-                    await SendWatchesByCategoryAsync(update.CallbackQuery.From.Id, id);
+                    await SendWatchesByCategoryAsync(update, id);
                 }
             }
             else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.ProducerId)!))
             {
                 if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.ProducerId, out int id))
                 {
-                    await SendWatchesByProducerAsync(update.CallbackQuery.From.Id, id);
+                    await SendWatchesByProducerAsync(update, id);
                 }
             }
             else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.Buy)!))
@@ -115,62 +115,47 @@ namespace WatchDb.TelegramAPI.Controllers
         // Keyboards
         private async Task SendFiltersKeyboardAsync(Update update)
         {
-            if (update != null && update.Message != null && update.Message.From != null)
-            {
-                await bot.SendFiltersKeyboard(update.Message.From.Id);
-            }
+            await bot.SendFiltersKeyboard(update);
         }
 
         private async Task SendCategoriesKeyboardAsync(Update update)
         {
-            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-            {
-                await bot.SendCategoriesKeyboardAsync(update.CallbackQuery.From.Id, await context.Categories.GetAsync());
-            }
+             await bot.SendCategoriesKeyboardAsync(update, await context.Categories.GetAsync());
         }
 
         private async Task SendProducersKeyboardAsync(Update update)
         {
-            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-            {
-                await bot.SendProducersKeyboardAsync(update.CallbackQuery.From.Id, await context.Producers.GetAsync());
-            }
+             await bot.SendProducersKeyboardAsync(update, await context.Producers.GetAsync());
         }
 
         // =================================
 
         private async Task SendWatchesAsync(Update update)
         {
-            if (update != null && update.Message != null && update.Message.From != null)
-            {
-                var watches = await context.Watches.GetAsync();
-                await bot.SendWatchesAsync(update.Message.From.Id, watches);
-            }
+            var watches = await context.Watches.GetAsync();
+            await bot.SendWatchesAsync(update, watches);
         }
 
-        private async Task SendWatchesByCategoryAsync(ChatId chat, int categoryId)
+        private async Task SendWatchesByCategoryAsync(Update update, int categoryId)
         {
             var watches = (await context.Watches.GetAsync()).Where(x => x.Category != null && x.Category.Id == categoryId);
 
-            await bot.SendWatchesAsync(chat, watches);
+            await bot.SendWatchesAsync(update, watches);
         }
 
-        private async Task SendWatchesByProducerAsync(ChatId chat, int producerId)
+        private async Task SendWatchesByProducerAsync(Update update, int producerId)
         {
             var watches = (await context.Watches.GetAsync()).Where(x => x.Producer != null && x.Producer.Id == producerId);
 
-            await bot.SendWatchesAsync(chat, watches);
+            await bot.SendWatchesAsync(update, watches);
         }
 
         private async Task FilterWatchesAsync(Update update)
         {
-            if (update != null && update.Message != null && update.Message.Text != null && update.Message.From != null)
-            {
-                var model = TgHelper.GetValueFromCommand(update, "/model");
-                var watches = await context.Watches.GetAsync(model);
+            var model = TgHelper.GetValueFromCommand(update, "/model");
+            var watches = await context.Watches.GetAsync(model);
 
-                await bot.SendWatchesAsync(update.Message.From.Id, watches);
-            }
+            await bot.SendWatchesAsync(update, watches);
         }
 
 
@@ -211,12 +196,9 @@ namespace WatchDb.TelegramAPI.Controllers
         }
 
 
-
-
-
         private async Task SendSetTitleMessage(Update update)
         {
-            await bot.SendCallbackQueryResponseAsync(update, "Write /model [value]");
+            await bot.SendResponseAsync(update, "Write /model [value]");
         }
 
 

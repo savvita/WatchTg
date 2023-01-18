@@ -9,6 +9,7 @@ namespace WatchDb.TelegramAPI
             if (update != null && update.Message != null && update.Message.Text != null)
             {
                 var model = update.Message.Text.Substring(command.Length).Trim();
+                return model;
             }
 
             return string.Empty;
@@ -44,7 +45,7 @@ namespace WatchDb.TelegramAPI
                 command = msg.ToLower();
             }
 
-            return msg;
+            return command;
         }
     }
 }

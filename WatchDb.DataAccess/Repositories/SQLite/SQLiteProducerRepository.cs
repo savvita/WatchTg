@@ -8,7 +8,7 @@ namespace WatchDb.DataAccess.Repositories.SQL
 {
     public class SQLiteProducerRepository : IProducerRepository
     {
-        private DBConfig configuration;
+        private readonly DBConfig configuration;
 
         public SQLiteProducerRepository(DBConfig configuration)
         {

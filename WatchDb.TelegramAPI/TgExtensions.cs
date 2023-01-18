@@ -8,7 +8,7 @@ namespace WatchDb.TelegramAPI
 {
     public static class TgExtensions
     {
-        public async static Task SendWatchesAsync(this TelegramBotClient client, ChatId chat, IEnumerable<Watch> watches, bool isAdmin = false)
+        public async static Task SendWatchesAsync(this TelegramBotClient client, Update update, IEnumerable<Watch> watches, bool isAdmin = false)
         {
             if (watches.Count() > 0)
             {
@@ -26,39 +26,37 @@ namespace WatchDb.TelegramAPI
                         keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Buy", $"{Enum.GetName<ReplyCodes>(ReplyCodes.Buy)} {watch.Id}"));
                     }
                     string url = "https://bpgroup.lv/i/product_images/images/Z2000128425.jpg";
-                    await client.SendPhotoAsync(chat, new Telegram.Bot.Types.InputFiles.InputOnlineFile(url));
-                    await client.SendTextMessageAsync(chat, $"{(watch.Producer != null ? watch.Producer.ProducerName : "")} {watch.Title} ({watch.Price})", replyMarkup: keyboard);
+                    await client.SendPhotoAsync(GetChat(update), new Telegram.Bot.Types.InputFiles.InputOnlineFile(url));
+                    await client.SendTextMessageAsync(GetChat(update), $"{(watch.Producer != null ? watch.Producer.ProducerName : "")} {watch.Title} ({watch.Price})", replyMarkup: keyboard);
                 }
             }
 
             else
             {
-                await client.SendTextMessageAsync(chat, "Not found");
+                await client.SendTextMessageAsync(GetChat(update), "Not found");
             }
         }
 
-        public static async Task SendUsersAsync(this TelegramBotClient client, ChatId chat, IEnumerable<WatchUILibrary.Models.User> users)
+        public static async Task SendUsersAsync(this TelegramBotClient client, Update update, IEnumerable<WatchUILibrary.Models.User> users)
         {
             if (users.Count() > 0)
             {
 
                 foreach (var user in users)
                 {
-                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Write", $"{Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)} {user.Id}"));
+                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Write", $"{Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)} {user.ChatId}"));
 
-                    string url = "https://bpgroup.lv/i/product_images/images/Z2000128425.jpg";
-                    await client.SendPhotoAsync(chat, new Telegram.Bot.Types.InputFiles.InputOnlineFile(url));
-                    await client.SendTextMessageAsync(chat, $"{user.ChatId}", replyMarkup: keyboard);
+                    await client.SendTextMessageAsync(GetChat(update), $"{user.ChatId}", replyMarkup: keyboard);
                 }
             }
 
             else
             {
-                await client.SendTextMessageAsync(chat, "Not found");
+                await client.SendTextMessageAsync(GetChat(update), "Not found");
             }
         }
 
-        public static async Task SendOrdersAsync(this TelegramBotClient client, ChatId chat, IEnumerable<Order> orders)
+        public static async Task SendOrdersAsync(this TelegramBotClient client, Update update, IEnumerable<Order> orders)
         {
             if (orders.Count() > 0)
             {
@@ -74,18 +72,18 @@ namespace WatchDb.TelegramAPI
                         sb.Append($"{detail.WatchId} ({detail.UnitPrice})");
                     }
 
-                    await client.SendTextMessageAsync(chat, sb.ToString(), replyMarkup: keyboard);
+                    await client.SendTextMessageAsync(GetChat(update), sb.ToString(), replyMarkup: keyboard);
                 }
             }
 
             else
             {
-                await client.SendTextMessageAsync(chat, "Not found");
+                await client.SendTextMessageAsync(GetChat(update), "Not found");
             }
 
         }
 
-        public static async Task SendAddNewWatchKeyboardAsync(this TelegramBotClient client, ChatId chat, Category? category, Producer? producer, Watch watch)
+        public static async Task SendAddNewWatchKeyboardAsync(this TelegramBotClient client, Update update, Category? category, Producer? producer, Watch watch)
         {
             var row1 = new List<InlineKeyboardButton>()
                 {
@@ -103,10 +101,41 @@ namespace WatchDb.TelegramAPI
                 };
             InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new List<List<InlineKeyboardButton>>() { row1, row2, row3 });
 
-            await client.SendTextMessageAsync(chat, "Select", replyMarkup: keyboard);
+            await client.SendTextMessageAsync(GetChat(update), "Select", replyMarkup: keyboard);
         }
 
-        public static async Task SendCategoriesKeyboardAsync(this TelegramBotClient client, ChatId chat, IEnumerable<Category> categories, bool isAdmin = false)
+        private static ChatId GetChat(Update update)
+        {
+            if(update != null && update.Message != null && update.Message.From != null)
+            {
+                return update.Message.From.Id;
+            }
+
+            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
+            {
+                return update.CallbackQuery.From.Id;
+            }
+            throw new ArgumentException();
+        }
+
+        public static async Task SendAdminKeyboardAsync(this TelegramBotClient client, Update update)
+        {
+            var row1 = new List<InlineKeyboardButton>()
+                {
+                    InlineKeyboardButton.WithCallbackData("Orders", Enum.GetName<ReplyCodes>(ReplyCodes.GetOrders)!),
+                    InlineKeyboardButton.WithCallbackData("Users", Enum.GetName<ReplyCodes>(ReplyCodes.GetUsers)!),
+                };
+            var row2 = new List<InlineKeyboardButton>()
+                {
+                    InlineKeyboardButton.WithCallbackData("Watches", Enum.GetName<ReplyCodes>(ReplyCodes.GetWatches)!),
+                    InlineKeyboardButton.WithCallbackData("Add new watch", Enum.GetName<ReplyCodes>(ReplyCodes.GetAddWatchMenu)!)
+                };
+            InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new List<List<InlineKeyboardButton>>() { row1, row2 });
+
+            await client.SendTextMessageAsync(GetChat(update), "Select", replyMarkup: keyboard);
+        }
+
+        public static async Task SendCategoriesKeyboardAsync(this TelegramBotClient client, Update update, IEnumerable<Category> categories, bool isAdmin = false)
         {
             var buttons = categories
                 .Select(c => new List<InlineKeyboardButton>() {
@@ -123,10 +152,10 @@ namespace WatchDb.TelegramAPI
 
             InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(buttons);
 
-            await client.SendTextMessageAsync(chat, "Select category", replyMarkup: keyboard);
+            await client.SendTextMessageAsync(GetChat(update), "Select category", replyMarkup: keyboard);
         }
 
-        public static async Task SendProducersKeyboardAsync(this TelegramBotClient client, ChatId chat, IEnumerable<Producer> producers, bool isAdmin = false)
+        public static async Task SendProducersKeyboardAsync(this TelegramBotClient client, Update update, IEnumerable<Producer> producers, bool isAdmin = false)
         {
             var buttons = producers
                 .Select(c => new List<InlineKeyboardButton>() {
@@ -143,10 +172,10 @@ namespace WatchDb.TelegramAPI
 
             InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(buttons);
 
-            await client.SendTextMessageAsync(chat, "Select producer", replyMarkup: keyboard);
+            await client.SendTextMessageAsync(GetChat(update), "Select producer", replyMarkup: keyboard);
         }
 
-        public static async Task SendFiltersKeyboard(this TelegramBotClient client, ChatId chat)
+        public static async Task SendFiltersKeyboard(this TelegramBotClient client, Update update)
         {
             var row1 = new List<InlineKeyboardButton>()
                 {
@@ -163,23 +192,12 @@ namespace WatchDb.TelegramAPI
 
             InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new List<List<InlineKeyboardButton>>() { row1, row2, row3 });
 
-            await client.SendTextMessageAsync(chat, "Select filter", replyMarkup: keyboard);           
+            await client.SendTextMessageAsync(GetChat(update), "Select filter", replyMarkup: keyboard);           
         }
 
-        public static async Task SendCallbackQueryResponseAsync(this TelegramBotClient client, Update update, string msg)
+        public static async Task SendResponseAsync(this TelegramBotClient client, Update update, string msg)
         {
-            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-            {
-                 await client.SendTextMessageAsync(update.CallbackQuery.From.Id, msg);
-            }
-        }
-
-        public static async Task SendMessageResponseAsync(this TelegramBotClient client, Update update, string msg)
-        {
-            if (update != null && update.Message != null && update.Message.From != null)
-            {
-                await client.SendTextMessageAsync(update.Message.From.Id, msg);
-            }
+            await client.SendTextMessageAsync(GetChat(update), msg);
         }
     }
 }

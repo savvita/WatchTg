@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using WatchUILibrary;
 using WatchUILibrary.Models;
-using System.Text;
 
 namespace WatchDb.TelegramAPI.Controllers
 {
@@ -39,6 +37,10 @@ namespace WatchDb.TelegramAPI.Controllers
             replyCodesHandles.Add(ReplyCodes.SetTitle, SendCreateNewTitleMessageAsync);
             replyCodesHandles.Add(ReplyCodes.SetPrice, SendCreateNewPriceMessageAsync);
             replyCodesHandles.Add(ReplyCodes.CreateNewWatch, CreateWatchAsync);
+            replyCodesHandles.Add(ReplyCodes.GetOrders, SendOrdersAsync);
+            replyCodesHandles.Add(ReplyCodes.GetUsers, SendUsersAsync);
+            replyCodesHandles.Add(ReplyCodes.GetWatches, SendWatchesAsync);
+            replyCodesHandles.Add(ReplyCodes.GetAddWatchMenu, CreateNewWatchAsync);
             commandHandles.Add("/category", CreateCategoryAsync);
             commandHandles.Add("/all", SendWatchesAsync);
             commandHandles.Add("/producer", CreateProducerAsync);
@@ -80,7 +82,7 @@ namespace WatchDb.TelegramAPI.Controllers
 
             else
             {
-                await SendAddNewWatchKeyboardAsync(update);
+                await SendAdminKeyboardAsync(update);
             }
         }
 
@@ -114,14 +116,26 @@ namespace WatchDb.TelegramAPI.Controllers
                 if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.DeleteWatch, out int id))
                 {
                     await context.Watches.DeleteAsync(id);
+                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Deleted");
                 }
+                else
+                {
+                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Command is not recognized");
+                }
+                await SendAdminKeyboardAsync(update);
             }
             else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.CloseOrder)!))
             {
                 if (TgHelper.GetIntFromCallbackQuery(update, ReplyCodes.CloseOrder, out int id))
                 {
                     await context.Orders.CloseOrderAsync(id);
+                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Closed");
                 }
+                else
+                {
+                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Command is not recognized");
+                }
+                await SendAdminKeyboardAsync(update);
             }
 
             else if (update.CallbackQuery.Data.StartsWith(Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)!))
@@ -132,53 +146,37 @@ namespace WatchDb.TelegramAPI.Controllers
                     chat = id;
                     await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Write /message [message]");
                 }
+                else
+                {
+                    await admin.SendTextMessageAsync(update.CallbackQuery.From.Id, "Command is not recognized");
+                    await SendAdminKeyboardAsync(update);
+                }
             }
         }
 
         // Keyboards
 
-        private async Task SendAddNewWatchKeyboardAsync(Update? update)
+        private async Task SendAdminKeyboardAsync(Update update)
         {
-            if (update == null)
-            {
-                return;
-            }
+            await admin.SendAdminKeyboardAsync(update);
+        }
 
+        private async Task SendAddNewWatchKeyboardAsync(Update update)
+        {
             if (newWatch != null)
             {
-                ChatId chatId;
-
-                if (update != null && update.Message != null && update.Message.From != null)
-                {
-                    chatId = update.Message.From.Id;
-                }
-                else if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-                {
-                    chatId = update.CallbackQuery.From.Id;
-                }
-                else
-                {
-                    return;
-                }
-
-                await admin.SendAddNewWatchKeyboardAsync(chatId, category, producer, newWatch);
+                await admin.SendAddNewWatchKeyboardAsync(update, category, producer, newWatch);
             }
         }
 
         private async Task SendCategoriesKeyboardAsync(Update update)
         {
-            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-            {
-                await admin.SendCategoriesKeyboardAsync(update.CallbackQuery.From.Id, await context.Categories.GetAsync(), true);
-            }
+             await admin.SendCategoriesKeyboardAsync(update, await context.Categories.GetAsync(), true);
         }
 
         private async Task SendProducersKeyboardAsync(Update update)
         {
-            if (update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
-            {
-                await admin.SendProducersKeyboardAsync(update.CallbackQuery.From.Id, await context.Producers.GetAsync(), true);
-            }
+            await admin.SendProducersKeyboardAsync(update, await context.Producers.GetAsync(), true);
         }
 
 
@@ -249,6 +247,7 @@ namespace WatchDb.TelegramAPI.Controllers
                 newWatch.Producer = producer;
                 newWatch.Category = category;
                 await context.Watches.CreateAsync(newWatch);
+                await admin.SendResponseAsync(update, "Created");
             }
         }
 
@@ -282,22 +281,22 @@ namespace WatchDb.TelegramAPI.Controllers
 
         private async Task SendCreateNewTitleMessageAsync(Update update)
         {
-            await admin.SendCallbackQueryResponseAsync(update, "Write /model [value]");
+            await admin.SendResponseAsync(update, "Write /model [value]");
         }
 
         private async Task SendCreateNewPriceMessageAsync(Update update)
         {
-            await admin.SendCallbackQueryResponseAsync(update, "Write /price [value]");
+            await admin.SendResponseAsync(update, "Write /price [value]");
         }
 
         private async Task SendCreateNewCategoryMessageAsync(Update update)
         {
-            await admin.SendCallbackQueryResponseAsync(update, "Write /category [name]");
+            await admin.SendResponseAsync(update, "Write /category [name]");
         }
 
         private async Task SendCreateNewProducerMessageAsync(Update update)
         {
-            await admin.SendCallbackQueryResponseAsync(update, "Write /producer [name]");
+            await admin.SendResponseAsync(update, "Write /producer [name]");
         }
 
         // ============================================
@@ -307,38 +306,23 @@ namespace WatchDb.TelegramAPI.Controllers
 
         private async Task SendWatchesAsync(Update update)
         {
-            if (update != null && update.Message != null && update.Message.From != null)
-            {
-                var watches = await context.Watches.GetAsync();
+            var watches = await context.Watches.GetAsync();
 
-                await admin.SendWatchesAsync(update.Message.From.Id, watches, true);
-            }
+            await admin.SendWatchesAsync(update, watches, true);
         }
 
         private async Task SendUsersAsync(Update update)
         {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.From != null)
-                {
-                    var users = await context.Users.GetAsync();
+            var users = await context.Users.GetAsync();
 
-                    await admin.SendUsersAsync(update.Message.From.Id, users);
-                }
-            }
+            await admin.SendUsersAsync(update, users);
         }
 
         private async Task SendOrdersAsync(Update update)
         {
-            if (update != null)
-            {
-                if (update.Message != null && update.Message.From != null)
-                {
-                    var orders = await context.Orders.GetAsync();
+            var orders = await context.Orders.GetAsync();
 
-                    await admin.SendOrdersAsync(update.Message.From.Id, orders);
-                }
-            }
+            await admin.SendOrdersAsync(update, orders);
         }
 
 

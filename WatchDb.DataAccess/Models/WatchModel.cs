@@ -9,5 +9,8 @@
         public decimal Price { get; set; }
         public int Available { get; set; }
         public bool OnSale { get; set; }
+        public byte[]? Image { get; set; }
+        public CategoryModel? Category { get; set; }
+        public ProducerModel? Producer { get; set; }
     }
 }

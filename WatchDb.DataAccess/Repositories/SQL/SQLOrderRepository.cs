@@ -3,13 +3,13 @@ using System.Data;
 using System.Data.SqlClient;
 using WatchDb.DataAccess.Models;
 
-namespace WatchDb.DataAccess.Repositories
+namespace WatchDb.DataAccess.Repositories.SQL
 {
-    public class OrderRepository : IRepository<OrderModel>
+    public class SQLOrderRepository : IOrderRepository
     {
         private DBConfig configuration;
 
-        public OrderRepository(DBConfig configuration)
+        public SQLOrderRepository(DBConfig configuration)
         {
             this.configuration = configuration;
         }
@@ -17,7 +17,7 @@ namespace WatchDb.DataAccess.Repositories
         public async Task<OrderModel> CreateAsync(OrderModel order)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            int id = await connection.QueryFirstOrDefaultAsync("insert into Orders values(@Date, @UserId, @StatusId); select SCOPE_IDENTITY();", order);
+            int id = await connection.QueryFirstOrDefaultAsync<int>("insert into Orders values(@Date, @UserId, @StatusId); select SCOPE_IDENTITY();", order);
             order.Id = id;
             return order;
         }
@@ -25,18 +25,26 @@ namespace WatchDb.DataAccess.Repositories
         public async Task<bool> DeleteAsync(int id)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            return (await connection.ExecuteAsync("delete Orders where Id = @Id", new { Id = id })) != 0;
+            return await connection.ExecuteAsync("delete Orders where Id = @Id", new { Id = id }) != 0;
         }
 
-        public async Task<IEnumerable<OrderModel>> GetAll()
+        public async Task<IEnumerable<OrderModel>> GetAsync()
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            return await connection.QueryAsync<OrderModel>("select * from Orders");
+            return await connection.QueryAsync<OrderModel, StatusModel, OrderModel>("select * from Orders left join Statuses on Orders.StatusId = Statuses.Id",
+                (o, s) => new OrderModel()
+                {
+                    Id = o.Id,
+                    Date = o.Date,
+                    StatusId = o.StatusId,
+                    UserId = o.UserId,
+                    Status = s
+                });
         }
 
-        public async Task<IEnumerable<OrderModel>> GetAllAsync(int? userId, int? statusId)
+        public async Task<IEnumerable<OrderModel>> GetAsync(int? userId, int? statusId)
         {
-            string sql = @"select * from Orders";
+            string sql = @"select * from Orders left join Statuses on Orders.StatusId = Statuses.Id";
 
             DynamicParameters parameters = new DynamicParameters();
             List<string> filters = new List<string>();
@@ -60,13 +68,28 @@ namespace WatchDb.DataAccess.Repositories
 
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
 
-            return await connection.QueryAsync<OrderModel>(sql, parameters);
+            return await connection.QueryAsync<OrderModel, StatusModel, OrderModel>(sql, (o, s) => new OrderModel()
+            {
+                Id = o.Id,
+                Date = o.Date,
+                StatusId = o.StatusId,
+                UserId = o.UserId,
+                Status = s
+            }, parameters);
         }
 
-        public async Task<OrderModel> GetById(int id)
+        public async Task<OrderModel?> GetAsync(int id)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            return await connection.QueryFirstOrDefaultAsync<OrderModel>("select * from Orders where Id = @Id", new { Id = id });
+            var model = await connection.QueryFirstOrDefaultAsync<OrderModel>("select * from Orders where Id = @Id", new { Id = id });
+
+            if(model != null)
+            {
+                model.Status = await connection.QueryFirstOrDefaultAsync<StatusModel>("select * from Statuses where Id = @Id", 
+                    new { Id = model.StatusId });
+            }
+
+            return model;
         }
 
         public async Task<OrderModel?> UpdateAsync(OrderModel order)

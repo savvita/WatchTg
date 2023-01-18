@@ -3,13 +3,13 @@ using System.Data;
 using System.Data.SqlClient;
 using WatchDb.DataAccess.Models;
 
-namespace WatchDb.DataAccess.Repositories
+namespace WatchDb.DataAccess.Repositories.SQL
 {
-    public class ProducerRepository : IRepository<ProducerModel>
+    public class SQLProducerRepository : IProducerRepository
     {
         private DBConfig configuration;
 
-        public ProducerRepository(DBConfig configuration)
+        public SQLProducerRepository(DBConfig configuration)
         {
             this.configuration = configuration;
         }
@@ -17,7 +17,7 @@ namespace WatchDb.DataAccess.Repositories
         public async Task<ProducerModel> CreateAsync(ProducerModel producer)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            int id = await connection.QueryFirstOrDefaultAsync("insert into Producers values(@ProducerName); select SCOPE_IDENTITY();", producer);
+            int id = await connection.QueryFirstOrDefaultAsync<int>("insert into Producers values(@ProducerName); select SCOPE_IDENTITY();", producer);
             producer.Id = id;
             return producer;
         }
@@ -26,16 +26,16 @@ namespace WatchDb.DataAccess.Repositories
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
             await connection.ExecuteAsync("update Watches set ProducerId = null where ProducerId = @Id", new { Id = id });
-            return (await connection.ExecuteAsync("delete Producers where Id = @Id", new { Id = id })) != 0;
+            return await connection.ExecuteAsync("delete Producers where Id = @Id", new { Id = id }) != 0;
         }
 
-        public async Task<IEnumerable<ProducerModel>> GetAll()
+        public async Task<IEnumerable<ProducerModel>> GetAsync()
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
             return await connection.QueryAsync<ProducerModel>("select * from Producers");
         }
 
-        public async Task<ProducerModel> GetById(int id)
+        public async Task<ProducerModel?> GetAsync(int id)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
             return await connection.QueryFirstOrDefaultAsync<ProducerModel>("select * from Producers where Id = @Id", new { Id = id });

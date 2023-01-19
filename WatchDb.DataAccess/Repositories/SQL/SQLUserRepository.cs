@@ -17,7 +17,7 @@ namespace WatchDb.DataAccess.Repositories.SQL
         public async Task<UserModel> CreateAsync(UserModel user)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            int id = await connection.QueryFirstOrDefaultAsync<int>("insert into Users values(@ChatId); select SCOPE_IDENTITY();", user);
+            int id = await connection.QueryFirstOrDefaultAsync<int>("insert into Users values(@ChatId, @Username, @Firstname, @Login, @Password); select SCOPE_IDENTITY();", user);
             user.Id = id;
             return user;
         }
@@ -49,7 +49,7 @@ namespace WatchDb.DataAccess.Repositories.SQL
         public async Task<UserModel?> UpdateAsync(UserModel user)
         {
             using IDbConnection connection = new SqlConnection(configuration.ConnectionString);
-            int rows = await connection.ExecuteAsync("update Users set ChatId = @ChatId where Id = @Id", user);
+            int rows = await connection.ExecuteAsync("update Users set ChatId = @ChatId, Username = @Username, FirstName = @FirstName, @Login, @Password where Id = @Id", user);
 
             return rows != 0 ? user : null;
         }

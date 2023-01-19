@@ -46,7 +46,7 @@ namespace WatchDb.TelegramAPI
                 {
                     InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Write", $"{Enum.GetName<ReplyCodes>(ReplyCodes.WriteToUser)} {user.ChatId}"));
 
-                    await client.SendTextMessageAsync(GetChat(update), $"{user.ChatId}", replyMarkup: keyboard);
+                    await client.SendTextMessageAsync(GetChat(update), $"{(user.Username ?? user.FirstName) ?? user.Login}", replyMarkup: keyboard);
                 }
             }
 
@@ -66,6 +66,7 @@ namespace WatchDb.TelegramAPI
 
                     StringBuilder sb = new StringBuilder();
                     sb.Append($"{order.Date}. OrderId: {order.Id}. UserId: {order.UserId}.");
+
 
                     foreach (var detail in order.Details)
                     {

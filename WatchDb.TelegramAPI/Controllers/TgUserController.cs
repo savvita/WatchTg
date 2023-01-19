@@ -55,9 +55,9 @@ namespace WatchDb.TelegramAPI.Controllers
 
         private async Task HandleCommandAsync(Update update)
         {
-            await AddUserAsync(update.Message!.From!.Id);
+            await AddUserAsync(update);
 
-            string command = TgHelper.GetCommand(update.Message.Text!);
+            string command = TgHelper.GetCommand(update.Message!.Text!);
 
             if (commandHandles.ContainsKey(command))
             {
@@ -67,7 +67,7 @@ namespace WatchDb.TelegramAPI.Controllers
 
         private async Task HandleCallbackQueryAsync(Update update)
         {
-            await AddUserAsync(update.CallbackQuery!.From!.Id);
+            await AddUserAsync(update);
 
             if (Enum.TryParse<ReplyCodes>(update.CallbackQuery.Data, out ReplyCodes code))
             {
@@ -99,15 +99,38 @@ namespace WatchDb.TelegramAPI.Controllers
             }
         }
 
-        private async Task AddUserAsync(ChatId chat)
+        private async Task AddUserAsync(Update update)
         {
+            ChatId chat;
+            string? username = null;
+            string? firstName = null;
+
+            if(update != null && update.Message != null && update.Message.From != null)
+            {
+                chat = update.Message.From.Id;
+                username = update.Message.From.Username;
+                firstName = update.Message.From.FirstName;
+            }
+            else if(update != null && update.CallbackQuery != null && update.CallbackQuery.From != null)
+            {
+                chat = update.CallbackQuery.From.Id;
+                username = update.CallbackQuery.From.Username;
+                firstName = update.CallbackQuery.From.FirstName;
+            }
+            else
+            {
+                throw new ArgumentException();
+            }
+
             var user = await context.Users.GetAsync((long)chat.Identifier!);
 
             if (user == null)
             {
                 await context.Users.CreateAsync(new WatchUILibrary.Models.User()
                 {
-                    ChatId = (long)chat.Identifier!
+                    ChatId = (long)chat.Identifier!,
+                    Username = username,
+                    FirstName = firstName
                 });
             }
         }

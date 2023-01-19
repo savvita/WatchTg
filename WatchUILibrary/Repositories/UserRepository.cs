@@ -40,7 +40,11 @@ namespace WatchUILibrary.Repositories
             var model = await context.Users.UpdateAsync(new UserModel()
             {
                 Id = user.Id,
-                ChatId = user.ChatId
+                ChatId = user.ChatId,
+                Username = user.Username,
+                FirstName = user.FirstName,
+                Login = user.FirstName,
+                Password = user.Password
             });
 
             if (model == null)
@@ -59,8 +63,18 @@ namespace WatchUILibrary.Repositories
         {
             return new User(await context.Users.CreateAsync(new UserModel()
             {
-                ChatId = user.ChatId
+                ChatId = user.ChatId,
+                Username = user.Username,
+                FirstName = user.FirstName,
+                Login = user.Login,
+                Password = user.Password
             }));
+        }
+
+        public async Task<User?> GetAsync(string? login, string? password)
+        {
+            var user = (await context.Users.GetAsync()).FirstOrDefault(x => x.Login != null && x.Login == login && x.Password != null && x.Password == password);
+            return user != null ? new User(user) : null;
         }
     }
 }

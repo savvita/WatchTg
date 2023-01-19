@@ -10,6 +10,11 @@ namespace WatchUILibrary.Models
         [Required]
         public long ChatId { get; set; }
 
+        public string? Username { get; set; }
+        public string? FirstName { get; set; }
+        public string? Login { get; set; }
+        public string? Password { get; set; }
+
         public User()
         {
         }
@@ -18,6 +23,10 @@ namespace WatchUILibrary.Models
         {
             Id = model.Id;
             ChatId = model.ChatId;
+            Username = model.Username;
+            FirstName = model.FirstName;
+            Login = model.Login;
+            Password = model.Password;
         }
     }
 }

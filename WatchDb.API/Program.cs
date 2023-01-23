@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using WatchDb.API.Cache;
 using WatchDb.DataAccess;
 using WatchDb.DataAccess.Repositories;
 using WatchDb.DataAccess.Repositories.SQL;
@@ -55,6 +56,7 @@ builder.Services.AddSingleton<DBConfig>(services =>
 //builder.Services.AddScoped<DbContext, SQLDbContext>();
 builder.Services.AddScoped<DbContext, SQLiteDbContext>();
 builder.Services.AddScoped<ShopDbContext>();
+builder.Services.AddScoped<ICacheService, CacheService>();
 
 
 

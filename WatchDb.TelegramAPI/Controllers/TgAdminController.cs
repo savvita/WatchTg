@@ -237,7 +237,10 @@ namespace WatchDb.TelegramAPI.Controllers
                 }
             }
 
-            await SendAddNewWatchKeyboardAsync(update);
+            if(update != null) 
+            {
+                await SendAddNewWatchKeyboardAsync(update);
+            }
         }
 
         private async Task CreateWatchAsync(Update update)
@@ -275,7 +278,10 @@ namespace WatchDb.TelegramAPI.Controllers
                     return;
                 }
 
-                (await context.Users.GetAsync()).ForEach(async u => await admin.SendTextMessageAsync(u.ChatId, update.Message.Text));
+                (await context.Users.GetAsync())
+                    .Where(u => u.ChatId != null)
+                    .ToList()
+                    .ForEach(async u => await admin.SendTextMessageAsync(u.ChatId!, update.Message.Text));
             }
         }
 

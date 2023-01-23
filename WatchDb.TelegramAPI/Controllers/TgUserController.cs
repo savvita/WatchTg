@@ -69,6 +69,11 @@ namespace WatchDb.TelegramAPI.Controllers
         {
             await AddUserAsync(update);
 
+            if(update == null || update.CallbackQuery == null)
+            {
+                return;
+            }
+
             if (Enum.TryParse<ReplyCodes>(update.CallbackQuery.Data, out ReplyCodes code))
             {
                 if (replyCodesHandles.ContainsKey(code))

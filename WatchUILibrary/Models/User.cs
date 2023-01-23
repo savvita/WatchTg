@@ -8,7 +8,7 @@ namespace WatchUILibrary.Models
         public int Id { get; set; }
 
         [Required]
-        public long ChatId { get; set; }
+        public long? ChatId { get; set; }
 
         [StringLength(100)]
         public string? Username { get; set; }

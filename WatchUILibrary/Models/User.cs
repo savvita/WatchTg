@@ -10,9 +10,16 @@ namespace WatchUILibrary.Models
         [Required]
         public long ChatId { get; set; }
 
+        [StringLength(100)]
         public string? Username { get; set; }
+
+        [StringLength(100)]
         public string? FirstName { get; set; }
+
+        [StringLength(100)]
         public string? Login { get; set; }
+
+        [StringLength(100)]
         public string? Password { get; set; }
 
         public User()

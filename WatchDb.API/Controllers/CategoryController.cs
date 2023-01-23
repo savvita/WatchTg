@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WatchDb.API.Models;
 using WatchUILibrary;
 using WatchUILibrary.Models;
 
@@ -17,33 +18,54 @@ namespace WatchDb.API.Controllers
         }
 
         [HttpGet("")]
-        public async Task<List<Category>> Get()
+        public async Task<Result<List<KeyValuePair<Category, int>>>> Get()
         {
-            return await context.Categories.GetAsync();
+            var watches = await context.Watches.GetAsync();
+            return new Result<List<KeyValuePair<Category, int>>>
+            {
+                Value = (await context.Categories.GetAsync())
+                .Select(x => new KeyValuePair<Category, int>(x, watches.Count(w => w.Category != null && w.Category.Id == x.Id))).ToList(),
+                Token = JWTHelper.GetToken()
+            };
         }
 
         [HttpGet("{id:int}")]
-        public async Task<Category?> Get(int id)
+        public async Task<Result<Category?>> Get(int id)
         {
-            return await context.Categories.GetAsync(id);
+            return new Result<Category?> {
+                Value = await context.Categories.GetAsync(id),
+                Token = JWTHelper.GetToken()
+            };
         }
 
         [HttpPost("")]
-        public async Task<Category> Create([FromBody] Category category)
+        public async Task<Result<Category>> Create([FromBody] Category category)
         {
-            return await context.Categories.CreateAsync(category);
+            return new Result<Category>
+            {
+                Value = await context.Categories.CreateAsync(category),
+                Token = JWTHelper.GetToken()
+            };
         }
 
         [HttpPut("")]
-        public async Task<Category?> Update([FromBody] Category category)
+        public async Task<Result<Category?>> Update([FromBody] Category category)
         {
-            return await context.Categories.UpdateAsync(category);
+            return new Result<Category?>
+            {
+                Value = await context.Categories.UpdateAsync(category),
+                Token = JWTHelper.GetToken()
+            };
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<bool> Delete(int id)
+        public async Task<Result<bool>> Delete(int id)
         {
-            return await context.Categories.DeleteAsync(id);
+            return new Result<bool>
+            {
+                Value = await context.Categories.DeleteAsync(id),
+                Token = JWTHelper.GetToken()
+            };
         }
     }
 }
